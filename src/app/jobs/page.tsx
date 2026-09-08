@@ -20,7 +20,7 @@ export default async function Jobs() {
               <h2>{j.title}</h2>
               <p>{j.description.slice(0, 220)}</p>
               <p>
-                {j.skills.map((s) => (
+                {j.skills.map((s: string) => (
                   <span className="tag" key={s}>
                     {s}
                   </span>
