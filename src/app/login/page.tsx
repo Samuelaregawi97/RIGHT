@@ -1,0 +1,5 @@
+ "use client";
+import {useState} from "react"; import {useRouter} from "next/navigation";
+export default function Login(){const [msg,setMsg]=useState("");const router=useRouter();
+async function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const data=Object.fromEntries(new FormData(e.currentTarget));const r=await fetch("/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});const j=await r.json();if(!r.ok){setMsg(j.error);return}router.push("/dashboard")}
+return <main className="container"><h1>Log in</h1><form className="card" onSubmit={submit}><label className="label">Email<input className="input" type="email" name="email" required/></label><label className="label">Password<input className="input" type="password" name="password" required/></label><button className="btn">Log in</button>{msg&&<p className="error">{msg}</p>}</form></main>}

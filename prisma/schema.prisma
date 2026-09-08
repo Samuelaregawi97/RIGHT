@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  WORKER
+  EMPLOYER
+  ADMIN
+}
+
+enum JobStatus {
+  OPEN
+  PAUSED
+  CLOSED
+}
+
+enum ApplicationStatus {
+  PENDING
+  SHORTLISTED
+  ACCEPTED
+  REJECTED
+}
+
+enum ContractStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum TransactionStatus {
+  PENDING
+  HELD
+  RELEASED
+  REFUNDED
+  FAILED
+}
+
+enum TransactionType {
+  EMPLOYER_PAYMENT
+  PLATFORM_FEE
+  WORKER_PAYOUT
+  REFUND
+}
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  passwordHash    String
+  role            Role
+  fullName        String
+  countryCode     String
+  phone           String?
+  verified        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  workerProfile   WorkerProfile?
+  employerProfile EmployerProfile?
+  jobs            Job[]    @relation("EmployerJobs")
+  applications    Application[]
+  contractsAsWorker   Contract[] @relation("WorkerContracts")
+  contractsAsEmployer Contract[] @relation("EmployerContracts")
+}
+
+model WorkerProfile {
+  id          String @id @default(cuid())
+  userId      String @unique
+  headline    String?
+  bio         String?
+  skills      String[]
+  languages   String[]
+  hourlyRate  Decimal? @db.Decimal(12,2)
+  availability String?
+  portfolioUrl String?
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmployerProfile {
+  id          String @id @default(cuid())
+  userId      String @unique
+  companyName String?
+  industry    String?
+  website     String?
+  description String?
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Job {
+  id          String @id @default(cuid())
+  employerId  String
+  title       String
+  description String
+  skills      String[]
+  budgetMin   Decimal? @db.Decimal(12,2)
+  budgetMax   Decimal? @db.Decimal(12,2)
+  currency    String @default("USD")
+  status      JobStatus @default(OPEN)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  employer    User @relation("EmployerJobs", fields: [employerId], references: [id], onDelete: Cascade)
+  applications Application[]
+  contracts    Contract[]
+}
+
+model Application {
+  id          String @id @default(cuid())
+  jobId       String
+  workerId    String
+  proposal    String
+  bidAmount   Decimal? @db.Decimal(12,2)
+  status      ApplicationStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+  job         Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  worker      User @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  @@unique([jobId, workerId])
+}
+
+model Contract {
+  id          String @id @default(cuid())
+  jobId       String
+  workerId    String
+  employerId  String
+  amount      Decimal @db.Decimal(12,2)
+  currency    String
+  status      ContractStatus @default(ACTIVE)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  job         Job @relation(fields: [jobId], references: [id])
+  worker      User @relation("WorkerContracts", fields: [workerId], references: [id])
+  employer    User @relation("EmployerContracts", fields: [employerId], references: [id])
+  transactions Transaction[]
+}
+
+model Transaction {
+  id            String @id @default(cuid())
+  contractId    String
+  type          TransactionType
+  amount        Decimal @db.Decimal(12,2)
+  currency      String
+  status        TransactionStatus @default(PENDING)
+  provider      String?
+  providerRef   String?
+  createdAt     DateTime @default(now())
+  contract      Contract @relation(fields: [contractId], references: [id])
+}
+
+model PlatformConfig {
+  id                  String @id @default("main")
+  commissionBps       Int @default(1000)
+  defaultCurrency     String @default("USD")
+  maintenanceMode     Boolean @default(false)
+  updatedAt            DateTime @updatedAt
+}

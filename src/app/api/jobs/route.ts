@@ -1,0 +1,3 @@
+import {NextResponse} from "next/server"; import {z} from "zod"; import {db} from "@/lib/db"; import {getCurrentUser} from "@/lib/auth";
+const schema=z.object({title:z.string().min(3),description:z.string().min(20),skills:z.array(z.string()).max(30),budgetMin:z.number().nonnegative().optional(),budgetMax:z.number().nonnegative().optional(),currency:z.string().length(3)});
+export async function POST(req:Request){const u=await getCurrentUser();if(!u||u.role!=="EMPLOYER")return NextResponse.json({error:"Employer account required"},{status:403});try{const x=schema.parse(await req.json());const job=await db.job.create({data:{...x,employerId:u.id}});return NextResponse.json(job)}catch{return NextResponse.json({error:"Invalid job data"},{status:400})}}
